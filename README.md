@@ -30,7 +30,7 @@ El módulo de Atención al Cliente implementa funcionalidades de soporte al usua
 **⚙️ Instalación y ejecución**
 ```
 # Clonar repositorio
-[git clone https://github.com/<usuario>/<repo>.git](https://github.com/alejavalerua/TallerPatrones_Grupo7.git)
+https://github.com/alejavalerua/TallerPatrones_Grupo7.git
 
 # Instalar dependencias
 npm install o npm i
