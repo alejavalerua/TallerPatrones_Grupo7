@@ -30,16 +30,10 @@ El módulo de Atención al Cliente implementa funcionalidades de soporte al usua
 **⚙️ Instalación y ejecución**
 ```
 # Clonar repositorio
-git clone https://github.com/<usuario>/<repo>.git
-cd <repo>
+[git clone https://github.com/<usuario>/<repo>.git](https://github.com/alejavalerua/TallerPatrones_Grupo7.git)
 
-# Instalar dependencias backend
-cd backend
-npm install
-
-# Instalar dependencias frontend
-cd frontend
-npm install
+# Instalar dependencias
+npm install o npm i
 
 # Configurar base de datos (Prisma + PostgreSQL)
 npx prisma migrate dev
