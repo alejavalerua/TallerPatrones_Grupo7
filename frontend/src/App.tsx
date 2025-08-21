@@ -144,10 +144,13 @@ const handleTicketResponse = (input: string) => {
     newData.descripcion = input;
     setTicketChat({ step: nextStep, data: newData, msgs });
 
-    setTimeout(() => {
-      const ticketCompleto = { ...newData, estado: "pendiente", id: tickets.length + 1 };
-      setTickets((prev) => [...prev, ticketCompleto]);
-
+    setTimeout(async () => {
+      // Llama al backend
+      await fetch('http://localhost:3000/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newData),
+      });
       setTicketChat((prev) => ({
         step: 0,
         data: {},
