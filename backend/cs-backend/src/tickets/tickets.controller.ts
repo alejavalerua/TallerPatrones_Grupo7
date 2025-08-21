@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, ParseIntPipe, BadRequestException } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
@@ -18,21 +18,38 @@ export class TicketsController {
     @Query('take', new ParseIntPipe({ optional: true })) take?: number,
     @Query('search') search?: string,
   ) {
+    const toBI = (v?: string) => v == null || v === '' ? undefined : BigInt(v);
     return this.ticketsService.findAll({
-      status: status ? BigInt(status) : undefined,
-      priority: priority ? BigInt(priority) : undefined,
-      assignee_id: assignee_id ? BigInt(assignee_id) : undefined,
-      customer_id: customer_id ? BigInt(customer_id) : undefined,
-      skip,
-      take,
+      status: toBI(status),
+      priority: toBI(priority),
+      assignee_id: toBI(assignee_id),
+      customer_id: toBI(customer_id),
+      skip: skip ? Number(skip) : undefined,
+      take: take ? Number(take) : undefined,
       search,
     });
   }
 
+
+@Get('/lookups')
+async lookups() {
+  const [statuses, priorities, agents, customers] = await Promise.all([
+    this.ticketsService['prisma'].ticket_status.findMany({ orderBy: { id: 'asc' } }),
+    this.ticketsService['prisma'].priority.findMany({ orderBy: { id: 'asc' } }),
+    this.ticketsService['prisma'].profiles.findMany({ where: { role: 2 } }), // 2 = AGENT
+    this.ticketsService['prisma'].profiles.findMany({ where: { role: 1 } }), // 1 = CUSTOMER
+  ]);
+  return { statuses, priorities, agents, customers };
+}
+
   @Get(':id')
   findOne(@Param('id') id: string) {
+  try {
     return this.ticketsService.findOne(BigInt(id));
+  } catch {
+    throw new BadRequestException('id inválido');
   }
+}
 
   @Post()
   create(@Body() body: any) {
@@ -61,22 +78,22 @@ export class TicketsController {
     return this.ticketsService.update(BigInt(id), dto);
   }
 
+  @Patch(':id/assign')
+  assign(@Param('id') id: string, @Body() body: any) {
+    const val = body.assignee_id;
+    const assignee = (val === null || val === 'null') ? null : BigInt(val);
+    return this.ticketsService.assign(BigInt(id), assignee);
+  }
+
+  @Patch(':id/status')
+  setStatus(@Param('id') id: string, @Body() body: any) {
+    return this.ticketsService.setStatus(BigInt(id), BigInt(body.status));
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ticketsService.delete(BigInt(id));
   }
-
-  // en tickets.controller.ts (o crea un LookupsController)
-@Get('/lookups')
-async lookups() {
-  const [statuses, priorities, agents, customers] = await Promise.all([
-    this.ticketsService['prisma'].ticket_status.findMany({ orderBy: { id: 'asc' } }),
-    this.ticketsService['prisma'].priority.findMany({ orderBy: { id: 'asc' } }),
-    this.ticketsService['prisma'].profiles.findMany({ where: { role: 2 } }), // 2 = AGENT
-    this.ticketsService['prisma'].profiles.findMany({ where: { role: 1 } }), // 1 = CUSTOMER
-  ]);
-  return { statuses, priorities, agents, customers };
-}
 
 
 }

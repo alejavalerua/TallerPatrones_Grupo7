@@ -26,17 +26,33 @@ let TicketsService = class TicketsService {
                 assignee_id,
                 customer_id,
                 ...(search
-                    ? { OR: [{ title: { contains: search, mode: 'insensitive' } },
-                            { description: { contains: search, mode: 'insensitive' } }] }
+                    ? { OR: [
+                            { title: { contains: search, mode: 'insensitive' } },
+                            { description: { contains: search, mode: 'insensitive' } },
+                        ] }
                     : {}),
             },
             orderBy: { created_at: 'desc' },
             skip,
             take,
+            include: {
+                ticket_status: true,
+                priority_tickets_priorityTopriority: true,
+                profiles_tickets_assignee_idToprofiles: { select: { id: true, name: true, email: true } },
+                profiles_tickets_customer_idToprofiles: { select: { id: true, name: true, email: true } },
+            },
         });
     }
     findOne(id) {
-        return this.prisma.tickets.findUnique({ where: { id } });
+        return this.prisma.tickets.findUnique({
+            where: { id },
+            include: {
+                ticket_status: true,
+                priority_tickets_priorityTopriority: true,
+                profiles_tickets_assignee_idToprofiles: { select: { id: true, name: true, email: true } },
+                profiles_tickets_customer_idToprofiles: { select: { id: true, name: true, email: true } },
+            },
+        });
     }
     async create(dto) {
         const norm = {
@@ -106,6 +122,35 @@ let TicketsService = class TicketsService {
     }
     delete(id) {
         return this.prisma.tickets.delete({ where: { id } });
+    }
+    async assign(id, assignee_id) {
+        if (assignee_id !== null) {
+            const agent = await this.prisma.profiles.findUnique({ where: { id: assignee_id } });
+            if (!agent)
+                throw new common_1.BadRequestException('assignee_id no existe');
+        }
+        try {
+            return await this.prisma.tickets.update({
+                where: { id },
+                data: { assignee_id, updated_at: new Date() },
+                include: { ticket_status: true, profiles_tickets_assignee_idToprofiles: true },
+            });
+        }
+        catch (e) {
+            if (e.code === 'P2025')
+                throw new common_1.NotFoundException('ticket no existe');
+            throw e;
+        }
+    }
+    async setStatus(id, status) {
+        const exists = await this.prisma.ticket_status.findUnique({ where: { id: status } });
+        if (!exists)
+            throw new common_1.BadRequestException('status no válido');
+        return this.prisma.tickets.update({
+            where: { id },
+            data: { status, updated_at: new Date() },
+            include: { ticket_status: true },
+        });
     }
 };
 exports.TicketsService = TicketsService;
