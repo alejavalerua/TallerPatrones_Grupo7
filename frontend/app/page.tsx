@@ -30,7 +30,7 @@ export default function HomePage() {
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <img src="/4code-solutions-logo.png" alt="4Code Solutions" className="h-8 w-auto" />
+              <img src="/icon.png" alt="4Code Solutions" className="h-8 w-auto" />
               <h1 className="text-2xl font-bold text-primary">SportFlex</h1>
             </div>
           </div>
@@ -374,7 +374,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 SportFlex. Todos los derechos reservados.</p>
+            <p>&copy; 2025 SportFlex. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

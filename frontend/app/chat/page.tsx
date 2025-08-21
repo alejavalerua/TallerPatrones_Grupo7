@@ -90,7 +90,7 @@ export default function ChatPage() {
       const ticketNumber = `TK-${Date.now().toString().slice(-6)}`
       const botResponse = {
         type: "bot" as const,
-        content: `Ticket generado: ${ticketNumber}. Un asesor te contactará en breve. Tiempo estimado de respuesta: 5-10 minutos.`,
+        content: `Ticket generado: ${ticketNumber}. Un asesor te contactará en breve. Espera en línea.`,
         timestamp: "Ahora",
       }
       setMessages((prev) => [...prev, botResponse])
@@ -206,7 +206,7 @@ export default function ChatPage() {
                   placeholder={
                     advisorChatEnabled
                       ? "Escribe tu consulta aquí..."
-                      : "Selecciona una pregunta frecuente o habla con un asesor"
+                      : "Selecciona hablar con un asesor"
                   }
                   className="flex-1 h-12 text-base"
                   value={inputMessage}
@@ -225,8 +225,8 @@ export default function ChatPage() {
               </div>
               <p className="text-sm text-muted-foreground mt-3">
                 {advisorChatEnabled
-                  ? "Presiona Enter para enviar • Conectado con asesor humano"
-                  : "Selecciona una opción arriba para comenzar"}
+                  ? "Presiona Enter para enviar • Conectado con asesor"
+                  : ""}
               </p>
             </div>
           </Card>

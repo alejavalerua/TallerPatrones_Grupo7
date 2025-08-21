@@ -4,9 +4,12 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'SportFlex',
+  description: 'Tu plataforma deportiva para entrenar y competir',
   generator: 'v0.app',
+  icons: {
+    icon: '/icon.png'
+  }
 }
 
 export default function RootLayout({
