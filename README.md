@@ -42,7 +42,7 @@ npx prisma migrate dev
 npm run start:dev
 
 # Ejecutar frontend
-npm start
+npm run dev
 ```
 
 <br>
