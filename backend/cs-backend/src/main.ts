@@ -6,9 +6,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalInterceptors(new BigIntInterceptor());
   
-  // Habilitar CORS para frontend en localhost:3001
+  // Habilitar CORS para frontend local
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: 'http://localhost:5173', // URL de tu frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 

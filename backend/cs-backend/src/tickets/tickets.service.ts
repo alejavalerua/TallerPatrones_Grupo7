@@ -3,6 +3,56 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
+import { ITicket } from './decorators/ticket.interface';
+import { TicketMediator } from './mediator/ticket-mediator';
+
+class BaseTicket implements ITicket {
+  constructor(
+    private readonly dto: CreateTicketDto,
+    private readonly status: bigint = 1n,
+    private readonly priority: bigint = 2n
+  ) {}
+
+  getTitle(): string { return this.dto.title; }
+  getDescription(): string { return this.dto.description; }
+  getPriority(): bigint { return this.priority; }
+  getStatus(): bigint { return this.status; }
+  getCustomerId(): bigint | null { return this.dto.customer_id ?? null; }
+  getAssigneeId(): bigint | null { return this.dto.assignee_id ?? null; }
+
+  toJSON() {
+    return {
+      title: this.getTitle(),
+      description: this.getDescription(),
+      status: this.getStatus(),
+      priority: this.getPriority(),
+      customer_id: this.getCustomerId(),
+      assignee_id: this.getAssigneeId()
+    };
+  }
+}
+
+// Decorador para tickets urgentes
+class UrgentTicketDecorator implements ITicket {
+  constructor(private ticket: ITicket) {}
+
+  getTitle(): string { return `🚨 URGENTE: ${this.ticket.getTitle()}`; }
+  getDescription(): string { return `${this.ticket.getDescription()}\n[Atención inmediata requerida]`; }
+  getPriority(): bigint { return 3n; }
+  getStatus(): bigint { return this.ticket.getStatus(); }
+  getCustomerId(): bigint | null { return this.ticket.getCustomerId(); }
+  getAssigneeId(): bigint | null { return this.ticket.getAssigneeId(); }
+
+  toJSON() {
+    return {
+      ...this.ticket.toJSON(),
+      title: this.getTitle(),
+      description: this.getDescription(),
+      priority: this.getPriority(),
+      isUrgent: true
+    };
+  }
+}
 
 @Injectable()
 export class TicketsService {

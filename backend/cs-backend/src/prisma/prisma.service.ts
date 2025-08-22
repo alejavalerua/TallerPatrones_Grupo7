@@ -4,6 +4,16 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private static instance: PrismaService;
+  // Singleton pattern ensuresonly one instance of PrismaService is created
+  constructor() {
+    super();
+    if (!PrismaService.instance) {
+      PrismaService.instance = this;
+    }
+    return PrismaService.instance;
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
