@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const tickets_service_1 = require("./tickets.service");
 const tickets_controller_1 = require("./tickets.controller");
 const prisma_module_1 = require("../prisma/prisma.module");
+const ticket_mediator_1 = require("./mediator/ticket-mediator");
 let TicketsModule = class TicketsModule {
 };
 exports.TicketsModule = TicketsModule;
@@ -18,7 +19,7 @@ exports.TicketsModule = TicketsModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
         controllers: [tickets_controller_1.TicketsController],
-        providers: [tickets_service_1.TicketsService],
+        providers: [tickets_service_1.TicketsService, ticket_mediator_1.TicketMediator],
     })
 ], TicketsModule);
 //# sourceMappingURL=tickets.module.js.map

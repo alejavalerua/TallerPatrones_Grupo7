@@ -12,10 +12,60 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TicketsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const ticket_mediator_1 = require("./mediator/ticket-mediator");
+class BaseTicket {
+    dto;
+    status;
+    priority;
+    constructor(dto, status = 1n, priority = 2n) {
+        this.dto = dto;
+        this.status = status;
+        this.priority = priority;
+    }
+    getTitle() { return this.dto.title; }
+    getDescription() { return this.dto.description; }
+    getPriority() { return this.priority; }
+    getStatus() { return this.status; }
+    getCustomerId() { return this.dto.customer_id ?? null; }
+    getAssigneeId() { return this.dto.assignee_id ?? null; }
+    toJSON() {
+        return {
+            title: this.getTitle(),
+            description: this.getDescription(),
+            status: this.getStatus(),
+            priority: this.getPriority(),
+            customer_id: this.getCustomerId(),
+            assignee_id: this.getAssigneeId()
+        };
+    }
+}
+class UrgentTicketDecorator {
+    ticket;
+    constructor(ticket) {
+        this.ticket = ticket;
+    }
+    getTitle() { return `🚨 URGENTE: ${this.ticket.getTitle()}`; }
+    getDescription() { return `${this.ticket.getDescription()}\n[Atención inmediata requerida]`; }
+    getPriority() { return 3n; }
+    getStatus() { return this.ticket.getStatus(); }
+    getCustomerId() { return this.ticket.getCustomerId(); }
+    getAssigneeId() { return this.ticket.getAssigneeId(); }
+    toJSON() {
+        return {
+            ...this.ticket.toJSON(),
+            title: this.getTitle(),
+            description: this.getDescription(),
+            priority: this.getPriority(),
+            isUrgent: true
+        };
+    }
+}
 let TicketsService = class TicketsService {
     prisma;
-    constructor(prisma) {
+    mediator;
+    constructor(prisma, mediator) {
         this.prisma = prisma;
+        this.mediator = mediator;
     }
     findAll(params) {
         const { status, priority, assignee_id, customer_id, skip, take, search } = params || {};
@@ -26,56 +76,45 @@ let TicketsService = class TicketsService {
                 assignee_id,
                 customer_id,
                 ...(search
-                    ? { OR: [{ title: { contains: search, mode: 'insensitive' } },
-                            { description: { contains: search, mode: 'insensitive' } }] }
+                    ? { OR: [
+                            { title: { contains: search, mode: 'insensitive' } },
+                            { description: { contains: search, mode: 'insensitive' } },
+                        ] }
                     : {}),
             },
             orderBy: { created_at: 'desc' },
             skip,
             take,
+            include: {
+                ticket_status: true,
+                priority_tickets_priorityTopriority: true,
+                profiles_tickets_assignee_idToprofiles: { select: { id: true, name: true, email: true } },
+                profiles_tickets_customer_idToprofiles: { select: { id: true, name: true, email: true } },
+            },
         });
     }
     findOne(id) {
-        return this.prisma.tickets.findUnique({ where: { id } });
+        return this.prisma.tickets.findUnique({
+            where: { id },
+            include: {
+                ticket_status: true,
+                priority_tickets_priorityTopriority: true,
+                profiles_tickets_assignee_idToprofiles: { select: { id: true, name: true, email: true } },
+                profiles_tickets_customer_idToprofiles: { select: { id: true, name: true, email: true } },
+            },
+        });
     }
     async create(dto) {
-        const norm = {
-            ...dto,
-            status: dto.status ?? 1n,
-            priority: dto.priority ?? 2n,
-            customer_id: dto.customer_id ?? null,
-            assignee_id: dto.assignee_id ?? null,
-        };
-        if (norm.customer_id !== null) {
-            const exists = await this.prisma.profiles.findUnique({ where: { id: norm.customer_id } });
-            if (!exists)
-                throw new common_1.BadRequestException('customer_id no existe');
+        let ticket = new BaseTicket(dto);
+        if (dto.priority && dto.priority >= 3n) {
+            ticket = new UrgentTicketDecorator(ticket);
         }
-        if (norm.assignee_id !== null) {
-            const exists = await this.prisma.profiles.findUnique({ where: { id: norm.assignee_id } });
-            if (!exists)
-                throw new common_1.BadRequestException('assignee_id no existe');
-        }
-        if (norm.status !== undefined) {
-            const exists = await this.prisma.ticket_status.findUnique({ where: { id: norm.status } });
-            if (!exists)
-                throw new common_1.BadRequestException('status no válido');
-        }
-        if (norm.priority !== undefined) {
-            const exists = await this.prisma.priority.findUnique({ where: { id: norm.priority } });
-            if (!exists)
-                throw new common_1.BadRequestException('priority no válida');
-        }
+        const ticketData = ticket.toJSON();
         return this.prisma.tickets.create({
             data: {
-                title: dto.title,
-                description: dto.description,
-                status: dto.status ?? (1n),
-                priority: dto.priority ?? (2n),
-                customer_id: dto.customer_id ?? null,
-                assignee_id: dto.assignee_id ?? null,
-                updated_at: new Date(),
-            },
+                ...ticketData,
+                updated_at: new Date()
+            }
         });
     }
     async update(id, dto) {
@@ -107,10 +146,33 @@ let TicketsService = class TicketsService {
     delete(id) {
         return this.prisma.tickets.delete({ where: { id } });
     }
+    async assign(id, assignee_id) {
+        if (assignee_id !== null) {
+            const agent = await this.prisma.profiles.findUnique({ where: { id: assignee_id } });
+            if (!agent)
+                throw new common_1.BadRequestException('assignee_id no existe');
+        }
+        await this.mediator.notifyAssigneeChange(id, assignee_id);
+        return this.prisma.tickets.findUnique({
+            where: { id },
+            include: { ticket_status: true, profiles_tickets_assignee_idToprofiles: true },
+        });
+    }
+    async setStatus(id, status) {
+        const exists = await this.prisma.ticket_status.findUnique({ where: { id: status } });
+        if (!exists)
+            throw new common_1.BadRequestException('status no válido');
+        await this.mediator.notifyStatusChange(id, status);
+        return this.prisma.tickets.findUnique({
+            where: { id },
+            include: { ticket_status: true },
+        });
+    }
 };
 exports.TicketsService = TicketsService;
 exports.TicketsService = TicketsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        ticket_mediator_1.TicketMediator])
 ], TicketsService);
 //# sourceMappingURL=tickets.service.js.map

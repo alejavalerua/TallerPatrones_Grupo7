@@ -21,18 +21,33 @@ let TicketsController = class TicketsController {
         this.ticketsService = ticketsService;
     }
     findAll(status, priority, assignee_id, customer_id, skip, take, search) {
+        const toBI = (v) => v == null || v === '' ? undefined : BigInt(v);
         return this.ticketsService.findAll({
-            status: status ? BigInt(status) : undefined,
-            priority: priority ? BigInt(priority) : undefined,
-            assignee_id: assignee_id ? BigInt(assignee_id) : undefined,
-            customer_id: customer_id ? BigInt(customer_id) : undefined,
-            skip,
-            take,
+            status: toBI(status),
+            priority: toBI(priority),
+            assignee_id: toBI(assignee_id),
+            customer_id: toBI(customer_id),
+            skip: skip ? Number(skip) : undefined,
+            take: take ? Number(take) : undefined,
             search,
         });
     }
+    async lookups() {
+        const [statuses, priorities, agents, customers] = await Promise.all([
+            this.ticketsService['prisma'].ticket_status.findMany({ orderBy: { id: 'asc' } }),
+            this.ticketsService['prisma'].priority.findMany({ orderBy: { id: 'asc' } }),
+            this.ticketsService['prisma'].profiles.findMany({ where: { role: 2 } }),
+            this.ticketsService['prisma'].profiles.findMany({ where: { role: 1 } }),
+        ]);
+        return { statuses, priorities, agents, customers };
+    }
     findOne(id) {
-        return this.ticketsService.findOne(BigInt(id));
+        try {
+            return this.ticketsService.findOne(BigInt(id));
+        }
+        catch {
+            throw new common_1.BadRequestException('id inválido');
+        }
     }
     create(body) {
         const dto = {
@@ -56,17 +71,16 @@ let TicketsController = class TicketsController {
         };
         return this.ticketsService.update(BigInt(id), dto);
     }
+    assign(id, body) {
+        const val = body.assignee_id;
+        const assignee = (val === null || val === 'null') ? null : BigInt(val);
+        return this.ticketsService.assign(BigInt(id), assignee);
+    }
+    setStatus(id, body) {
+        return this.ticketsService.setStatus(BigInt(id), BigInt(body.status));
+    }
     remove(id) {
         return this.ticketsService.delete(BigInt(id));
-    }
-    async lookups() {
-        const [statuses, priorities, agents, customers] = await Promise.all([
-            this.ticketsService['prisma'].ticket_status.findMany({ orderBy: { id: 'asc' } }),
-            this.ticketsService['prisma'].priority.findMany({ orderBy: { id: 'asc' } }),
-            this.ticketsService['prisma'].profiles.findMany({ where: { role: 2 } }),
-            this.ticketsService['prisma'].profiles.findMany({ where: { role: 1 } }),
-        ]);
-        return { statuses, priorities, agents, customers };
     }
 };
 exports.TicketsController = TicketsController;
@@ -83,6 +97,12 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String, Number, Number, String]),
     __metadata("design:returntype", void 0)
 ], TicketsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('/lookups'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TicketsController.prototype, "lookups", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
@@ -106,18 +126,28 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], TicketsController.prototype, "update", null);
 __decorate([
+    (0, common_1.Patch)(':id/assign'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], TicketsController.prototype, "assign", null);
+__decorate([
+    (0, common_1.Patch)(':id/status'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], TicketsController.prototype, "setStatus", null);
+__decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TicketsController.prototype, "remove", null);
-__decorate([
-    (0, common_1.Get)('/lookups'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], TicketsController.prototype, "lookups", null);
 exports.TicketsController = TicketsController = __decorate([
     (0, common_1.Controller)('tickets'),
     __metadata("design:paramtypes", [tickets_service_1.TicketsService])

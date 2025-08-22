@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -24,7 +24,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 
 // FAQs
 export const faqs = [
@@ -51,6 +50,21 @@ export default function ChatFAQ() {
   // Tickets
   const [tickets, setTickets] = useState<any[]>([]);
 
+  // Obtener tickets al cargar
+  useEffect(() => {
+    if (role === 'admin') {
+      fetch('http://localhost:3000/tickets', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(res => res.json())
+      .then(data => setTickets(data))
+      .catch(err => console.error('Error cargando tickets:', err));
+    }
+  }, [role]);
+
   // Chat de ticket
   const [ticketChat, setTicketChat] = useState<{ step: number; data: any; msgs: any[] }>({
     step: 0,
@@ -67,102 +81,125 @@ export default function ChatFAQ() {
   };
 
   // Manejo de entrada en chat de ticket
-const handleTicketResponse = (input: string) => {
-  let { step, data, msgs } = ticketChat;
+  const handleTicketResponse = (input: string) => {
+    let { step, data, msgs } = ticketChat;
 
-  // Guardamos el mensaje del usuario
-  msgs = [...msgs, { from: "user", text: input }];
-  let nextStep = step + 1;
-  let newData = { ...data };
+    msgs = [...msgs, { from: "user", text: input }];
+    let nextStep = step + 1;
+    let newData = { ...data };
 
-  if (step === 0) {
-    // Guardamos el nombre
-    newData.nombre = input;
-    setTicketChat({ step: nextStep, data: newData, msgs });
+    if (step === 0) {
+      newData.nombre = input;
+      setTicketChat({ step: nextStep, data: newData, msgs });
 
-    setTimeout(() => {
-      setTicketChat((prev) => ({
-        ...prev,
-        msgs: [...prev.msgs, { from: "bot", text: "Gracias, ahora dime tu correo 📧" }]
-      }));
-    }, 1000);
-
-  } else if (step === 1) {
-    // Validar correo
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(input)) {
       setTimeout(() => {
         setTicketChat((prev) => ({
           ...prev,
-          msgs: [...prev.msgs, { from: "bot", text: "⚠️ Ese no parece un correo válido, inténtalo de nuevo." }]
+          msgs: [...prev.msgs, { from: "bot", text: "Gracias, ahora dime tu correo 📧" }]
         }));
-      }, 500);
-      return; // No avanzamos de step
-    }
+      }, 1000);
 
-    newData.email = input;
-    setTicketChat({ step: nextStep, data: newData, msgs });
+    } else if (step === 1) {
+      // Validar correo
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(input)) {
+        setTimeout(() => {
+          setTicketChat((prev) => ({
+            ...prev,
+            msgs: [...prev.msgs, { from: "bot", text: "⚠️ Ese no parece un correo válido, inténtalo de nuevo." }]
+          }));
+        }, 500);
+        return; // No avanzamos de step
+      }
 
-    setTimeout(() => {
-      setTicketChat((prev) => ({
-        ...prev,
-        msgs: [
-          ...prev.msgs,
-          { from: "bot", text: "¿Qué tipo de problema tienes? (Opciones: Técnico, Pago, Cuenta)" }
-        ]
-      }));
-    }, 1000);
+      newData.email = input;
+      setTicketChat({ step: nextStep, data: newData, msgs });
 
-  } else if (step === 2) {
-    // Solo permitir opciones válidas
-    const opcionesValidas = ["técnico", "pago", "cuenta"];
-    if (!opcionesValidas.includes(input.toLowerCase())) {
       setTimeout(() => {
         setTicketChat((prev) => ({
           ...prev,
           msgs: [
             ...prev.msgs,
-            { from: "bot", text: "⚠️ Esa opción no es válida. Escribe: Técnico, Pago o Cuenta." }
+            { from: "bot", text: "¿Qué tipo de problema tienes? (Opciones: Técnico, Pago, Cuenta)" }
           ]
         }));
-      }, 500);
-      return; // No avanzamos de step
+      }, 1000);
+
+    } else if (step === 2) {
+      // Solo permitir opciones válidas
+      const opcionesValidas = ["técnico", "pago", "cuenta"];
+      if (!opcionesValidas.includes(input.toLowerCase())) {
+        setTimeout(() => {
+          setTicketChat((prev) => ({
+            ...prev,
+            msgs: [
+              ...prev.msgs,
+              { from: "bot", text: "⚠️ Esa opción no es válida. Escribe: Técnico, Pago o Cuenta." }
+            ]
+          }));
+        }, 500);
+        return; // No avanzamos de step
+      }
+
+      newData.tipo = input;
+      setTicketChat({ step: nextStep, data: newData, msgs });
+
+      setTimeout(() => {
+        setTicketChat((prev) => ({
+          ...prev,
+          msgs: [...prev.msgs, { from: "bot", text: "Por favor describe tu problema con más detalle 📝" }]
+        }));
+      }, 1000);
+
+    } else if (step === 3) {
+      // Guardamos la descripción
+      newData.descripcion = input;
+      setTicketChat({ step: nextStep, data: newData, msgs });
+
+      setTimeout(async () => {
+        // Formateamos los datos según espera el backend
+        const ticketData = {
+          title: `${newData.tipo} - ${newData.nombre}`,
+          description: `Email: ${newData.email}\n\nDescripción: ${newData.descripcion}`,
+        };
+
+        try {
+          const response = await fetch('http://localhost:3000/tickets', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(ticketData),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+          }
+
+          setTicketChat((prev) => ({
+            step: 0,
+            data: {},
+            msgs: [
+              ...prev.msgs,
+              { from: "bot", text: "✅ ¡Tu ticket fue creado! Nuestro equipo lo revisará pronto." },
+              { from: "bot", text: "Si quieres, abre un nuevo ticket escribiendo tu nombre." }
+            ]
+          }));
+        } catch (error) {
+          console.error('Error creando ticket:', error);
+          setTicketChat((prev) => ({
+            ...prev,
+            msgs: [
+              ...prev.msgs,
+              { from: "bot", text: "❌ Hubo un error al crear el ticket. Por favor, intenta de nuevo." }
+            ]
+          }));
+        }
+      }, 1000);
     }
-
-    newData.tipo = input;
-    setTicketChat({ step: nextStep, data: newData, msgs });
-
-    setTimeout(() => {
-      setTicketChat((prev) => ({
-        ...prev,
-        msgs: [...prev.msgs, { from: "bot", text: "Por favor describe tu problema con más detalle 📝" }]
-      }));
-    }, 1000);
-
-  } else if (step === 3) {
-    // Guardamos la descripción
-    newData.descripcion = input;
-    setTicketChat({ step: nextStep, data: newData, msgs });
-
-    setTimeout(async () => {
-      // Llama al backend
-      await fetch('http://localhost:3000/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newData),
-      });
-      setTicketChat((prev) => ({
-        step: 0,
-        data: {},
-        msgs: [
-          ...prev.msgs,
-          { from: "bot", text: "✅ ¡Tu ticket fue creado! Nuestro equipo lo revisará pronto." },
-          { from: "bot", text: "Si quieres, abre un nuevo ticket escribiendo tu nombre." }
-        ]
-      }));
-    }, 1000);
-  }
-};
+  };
 
   return (
     <Box sx={{ background: "linear-gradient(135deg, #e0f7fa, #f3e5f5)", minHeight: "100vh", py: 5 }}>
