@@ -112,7 +112,7 @@ export default function ChatPage() {
               </Button>
             </Link>
             <div className="flex items-center gap-3">
-              <img src="/4code-solutions-logo.png" alt="4Code Solutions" className="h-8 w-auto" />
+              <img src="/icon.png" alt="4Code Solutions" className="h-8 w-auto" />
               <h1 className="text-2xl font-bold text-primary">SportFlex</h1>
             </div>
           </div>
