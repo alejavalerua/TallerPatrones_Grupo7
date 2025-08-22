@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private static instance: PrismaService;
-  // Singleton pattern to ensure only one instance of PrismaService is created
+  // Singleton pattern ensuresonly one instance of PrismaService is created
   constructor() {
     super();
     if (!PrismaService.instance) {
